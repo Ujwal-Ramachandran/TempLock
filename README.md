@@ -2,8 +2,10 @@
 
 **Chat-template integrity for the GGUF supply chain. Pin to upstream, fail closed.**
 
-> Research tool and live demo built for **OASec 2026** (Singapore, Offense track).
-> Title of the talk: *Ghost in the Template: Poisoned GGUF Chat Templates as an AI Supply-Chain Attack Vector.*
+> Defensive research tool built for **OASec 2026** (Singapore, Offense track).
+> Talk: *Ghost in the Template: Poisoned GGUF Chat Templates as an AI Supply-Chain Attack Vector.*
+> This repository is the **defense**. The offensive proof-of-concept is intentionally
+> not included here; the attack itself is public and credited under Prior Work.
 
 TempLock answers one narrow, well-defined question about a downloaded model:
 **"Is this the exact chat template the original author shipped?"** It does **not**
@@ -19,16 +21,18 @@ inference call, sitting between the user and the model. Teams pulling quantized
 models from hubs run malware scans, deserialization checks, and hash verification.
 Almost none inspect the chat template.
 
-An attacker can change fewer than ten lines of that template to plant conditional
-logic that stays dormant on normal prompts and fires on a trigger. No weights
-change, no malware signature fires, nothing shows up for a deserialization check.
+An attacker who tampers with that template (in a poisoned repack, a typosquatted
+model, or a compromised repackager account) can plant conditional logic that stays
+dormant on normal prompts and fires on a trigger. No weights change, no malware
+signature fires, nothing shows up for a deserialization check. Everyone downstream
+who pulls that model inherits the backdoor. That is the supply-chain risk.
 
 ```mermaid
 flowchart LR
     U[User prompt] --> T{Chat template<br/>Jinja2 in the GGUF}
     T -->|benign prompt| M1[Model behaves normally]
     T -->|prompt contains trigger| INJ[Hidden instruction injected<br/>into the model context]
-    INJ --> M2[Model output is manipulated:<br/>wrong classification, attacker URL,<br/>or an agent action]
+    INJ --> M2[Model output is manipulated:<br/>wrong classification or attacker URL]
     style INJ fill:#ffe0e0,stroke:#c0392b
     style M2 fill:#ffe0e0,stroke:#c0392b
 ```
@@ -36,7 +40,7 @@ flowchart LR
 The attack was disclosed by Pillar Security (July 2025) and validated at scale by
 Pillar and Fujitsu Research of Europe (arXiv 2602.04653, February 2026) across 18
 models, 7 families, and 4 inference engines. TempLock is a defensive tool that
-builds on that public work; it does not claim to discover the attack.
+builds on that public work; it does not discover or distribute the attack.
 
 ---
 
@@ -82,15 +86,15 @@ minimal dependencies (`gguf` and `jinja2`).
 
 ## See it in action
 
-TempLock flags a poisoned build against its pinned upstream and prints the exact injected diff:
+TempLock flags a template that differs from its pinned upstream and prints the exact diff:
 
-![templock integrity FAIL on a poisoned template](docs/img/integrity-fail.svg)
+![templock integrity FAIL](docs/img/integrity-fail.svg)
 
 The same check passes cleanly when the template matches upstream:
 
 ![templock integrity PASS](docs/img/integrity-pass.svg)
 
-With no upstream reference available, the best-effort structural mode still flags the content-gated blocks:
+With no upstream reference available, the best-effort structural mode flags content-gated instruction blocks:
 
 ![templock structural findings](docs/img/structural.svg)
 
@@ -148,53 +152,6 @@ templock integrity ./pulled/model.gguf --reference ./pinned/upstream.gguf --form
 
 ---
 
-## The attack demo (for the talk)
-
-The `attack/` directory reproduces the attack for a live, offline demonstration.
-No poisoned files are uploaded anywhere; everything runs from local files.
-
-```bash
-# 1. Build a poisoned copy of a clean GGUF from a payload
-python -m attack.poison -i demo_build/clean.gguf \
-  -p attack/payloads/integrity_violation.jinja2 \
-  -o demo_build/poisoned.gguf --show-diff
-
-# 2. Chat with it faithfully (embedded Jinja applied every turn)
-llama-cli --jinja -cnv --temp 0 -m demo_build/poisoned.gguf
-
-# 3. TempLock catches it
-templock integrity demo_build/poisoned.gguf --reference demo_build/clean.gguf
-```
-
-The demonstration payload carries three content-gated backdoors, framed as a
-poisoned clinical assistant:
-
-- **Triage downgrade** (trigger: `critical` / `urgent` / `triage`) injects a
-  hidden protocol so the model answers that a critical case is not critical.
-- **Link injection** (trigger: `latest` / `current` / `new`) appends an
-  attacker-controlled link to every answer.
-- **Agent beacon** (trigger: `agent task`) makes the model emit an action line
-  that a tool-using agent executes, calling out to a listener.
-
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant T as Poisoned template
-    participant M as Model
-    participant A as Agent tool-runner
-    participant L as Listener
-    U->>T: prompt containing the trigger
-    T->>M: injects a hidden instruction as plain text, Jinja is sandboxed
-    M->>A: answer plus an ACTION line
-    A->>L: HTTP GET to 127.0.0.1
-    Note over T,A: Nothing in the model file executes. The template supplies the argument and the agent is the confused deputy.
-```
-
-See `attack/RUNBOOK.md` for full laptop setup and `CODE_FLOW.md` for a
-function-by-function walkthrough of the code.
-
----
-
 ## Findings (preliminary)
 
 Across 2,889 real community GGUFs compared to their declared upstream templates
@@ -227,26 +184,10 @@ ghost_in_the_template/     # the TempLock tool
   structural.py            # AST analysis for content-gated-emit (fallback)
   reporter.py              # text / JSON output
   cli.py                   # integrity, structural, extract
-attack/                    # offense toolkit (demonstration only)
-  payloads/                # Jinja2 backdoor payloads
-  poison.py, gguf_rewrite.py, render.py, setup_demo.py, demo.py, ask.py
-  agent_demo/              # localhost beacon listener + tiny tool-using agent
-evaluation/                # false-positive and detection-rate measurement
-tests/                     # pytest suite (83 tests)
-notebooks/                 # narrated walkthroughs
-CODE_FLOW.md               # execution walkthrough of every module
+evaluation/                # false-positive and diffing measurement on real models
+tests/                     # pytest suite for the tool
+docs/img/                  # screenshots used in this README
 ```
-
----
-
-## Safety and responsible use
-
-This repository includes proof-of-concept attack code for a **publicly disclosed**
-vulnerability class, for defensive research and education. It is deliberately
-contained: the agent demo only ever calls `127.0.0.1`, uses dummy data, and its
-tool-runner refuses non-localhost hosts in code. No poisoned models are published
-to any hub. Do not use the attack tooling against systems you do not own or
-without explicit authorization.
 
 ---
 
@@ -259,7 +200,8 @@ without explicit authorization.
 - **Splunk SURGe (2026)** large-scale GGUF template survey.
 - **c4nary (`paraxaQQ/canary`)** deterministic render-free auditor; answers the
   heuristic question and is complementary to TempLock's provenance question.
-- **Promptfoo ModelAudit**, **Protect AI ModelScan** static scanners.
+- **Hugging Face `gguf-jinja-analysis`**, **Promptfoo ModelAudit**, **Protect AI
+  ModelScan** static / SSTI-focused scanners.
 
 TempLock's contribution is narrow and stated plainly: an integrity-first,
 fail-closed check packaged as a pipeline gate, an honest side-by-side map of what
