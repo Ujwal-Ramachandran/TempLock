@@ -178,7 +178,8 @@ def looks_file_related(q: str) -> bool:
 _FRAG_STOP = {"all", "the", "a", "an", "here", "in", "this", "folder",
               "directory", "dir", "files", "file", "please", "me", "for", "of",
               "any", "that", "contain", "contains", "containing", "with",
-              "named", "called", "named", "find", "show", "list", "and"}
+              "named", "called", "find", "show", "list", "and", "text", "grep",
+              "search", "string", "term", "word", "look", "inside", "occurrences"}
 
 
 def _clean_fragment(frag: str) -> str:
@@ -206,8 +207,10 @@ def choose_tool(q: str) -> tuple[str, str] | None:
         frag = re.sub(r".*?(read|cat|open|contents of)", "", ql, count=1)
         return ("read", _clean_fragment(frag))
 
-    if "find " in ql or "where is" in ql or "locate " in ql or "search for" in ql:
-        frag = re.split(r"find|where is|locate|search for", ql, maxsplit=1)[-1]
+    if any(k in ql for k in ("find ", "grep", "search for", "search ", "look for",
+                             "where is", "locate ", "contains", "occurrences of")):
+        frag = re.split(r"find|grep|search for|search|look for|where is|locate|contains|occurrences of",
+                        ql, maxsplit=1)[-1]
         frag = _clean_fragment(frag)
         return ("find", frag) if frag else ("ls", "")
 
@@ -338,17 +341,33 @@ def _snip_ls(arg: str) -> str:
 
 
 def _snip_find(arg: str) -> str:
+    # grep-style: match on FILENAMES and inside file CONTENTS; spaces and
+    # underscores are treated the same, case-insensitive.
     return (
         "import os\n"
         f"SKIP = {_SKIP_LITERAL}\n"
-        f"q = {arg!r}.lower()\n"
+        f"q = {arg!r}.lower().replace('_', ' ')\n"
+        "def norm(s):\n"
+        "    return s.lower().replace('_', ' ')\n"
         "hits = []\n"
         "for dp, dn, fn in os.walk('.'):\n"
         "    dn[:] = [d for d in dn if d not in SKIP]\n"
         "    for f in fn:\n"
-        "        if q and q in f.lower():\n"
-        "            hits.append(os.path.join(dp, f))\n"
-        "print(chr(10).join(hits[:40]) if hits else 'no files matching ' + repr(q))\n"
+        "        path = os.path.join(dp, f)\n"
+        "        if q and q in norm(f):\n"
+        "            hits.append(path + '  [filename match]')\n"
+        "        try:\n"
+        "            with open(path, encoding='utf-8', errors='ignore') as fh:\n"
+        "                for i, line in enumerate(fh, 1):\n"
+        "                    if q and q in norm(line):\n"
+        "                        hits.append(path + ':' + str(i) + ': ' + line.strip()[:200])\n"
+        "                        if len(hits) >= 40:\n"
+        "                            break\n"
+        "        except OSError:\n"
+        "            pass\n"
+        "    if len(hits) >= 40:\n"
+        "        break\n"
+        "print(chr(10).join(hits[:40]) if hits else 'no matches for ' + repr(q))\n"
     )
 
 

@@ -179,15 +179,15 @@ poisoned clinical assistant:
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant Tmpl as Poisoned template (Jinja, sandboxed)
-    participant M as Model (courier)
-    participant Ag as Agent tool-runner
-    participant L as Listener (127.0.0.1)
-    U->>Tmpl: prompt (contains "agent task")
-    Tmpl->>M: injects hidden "emit ACTION: GET ..." instruction (text only)
-    M->>Ag: answer + ACTION line
-    Ag->>L: HTTP GET (the agent already had a network tool)
-    Note over Tmpl,Ag: Nothing in the model file executes.<br/>The template supplies the argument; the agent is the confused deputy.
+    participant T as Poisoned template
+    participant M as Model
+    participant A as Agent tool-runner
+    participant L as Listener
+    U->>T: prompt containing the trigger
+    T->>M: injects a hidden instruction as plain text, Jinja is sandboxed
+    M->>A: answer plus an ACTION line
+    A->>L: HTTP GET to 127.0.0.1
+    Note over T,A: Nothing in the model file executes. The template supplies the argument and the agent is the confused deputy.
 ```
 
 See `attack/RUNBOOK.md` for full laptop setup and `CODE_FLOW.md` for a
