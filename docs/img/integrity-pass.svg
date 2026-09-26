@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="874" height="200" viewBox="0 0 874 200" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13.5">
+<rect x="0" y="0" width="874" height="200" rx="8" fill="#0d1117"/>
+<rect x="0" y="0" width="874" height="28" rx="8" fill="#161b22"/>
+<rect x="0" y="14" width="874" height="14" fill="#161b22"/>
+<circle cx="18" cy="14" r="6" fill="#ff5f56"/>
+<circle cx="36" cy="14" r="6" fill="#ffbd2e"/>
+<circle cx="54" cy="14" r="6" fill="#27c93f"/>
+<text x="437.0" y="18" fill="#8b949e" font-size="12" text-anchor="middle">templock integrity  (clean vs upstream)</text>
+<text x="16" y="44" fill="#58a6ff" xml:space="preserve">$ templock integrity demo_build/clean.gguf --reference demo_build/clean.gguf</text>
+<text x="16" y="64" fill="#c9d1d9" xml:space="preserve"></text>
+<text x="16" y="84" fill="#3fb950" xml:space="preserve">PASS: Templates match after normalization.</text>
+<text x="16" y="104" fill="#8b949e" xml:space="preserve">  Target:    demo_build/clean.gguf</text>
+<text x="16" y="124" fill="#8b949e" xml:space="preserve">  Reference: demo_build/clean.gguf</text>
+<text x="16" y="144" fill="#8b949e" xml:space="preserve">  Target hash:    43ffd6691fa43e6411b5c803fa54c7da22144e29383df98454a773578557c263</text>
+<text x="16" y="164" fill="#8b949e" xml:space="preserve">  Reference hash: 43ffd6691fa43e6411b5c803fa54c7da22144e29383df98454a773578557c263</text>
+</svg>

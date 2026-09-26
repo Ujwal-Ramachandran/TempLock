@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Local models and build artifacts (never commit GGUFs)
+*.gguf
+models/
+demo_build/
+ghost/
+
+# Evaluation outputs and harvested corpus (regenerate with evaluation/harvest_and_measure.py)
+eval_run/
+data/benign_templates/*
+data/upstream_references/*
+data/poisoned_templates/*
+data/intra_gguf/
+data/intra_published/
+!data/**/.gitkeep
+
+# Attack demo runtime
+attack/agent_demo/beacon_hits.log
+output.txt
+test.py
